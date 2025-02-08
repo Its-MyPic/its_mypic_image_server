@@ -1,6 +1,8 @@
+/.github
 /.vscode
 /target
 /images
 *.env
 *.tar
 .DS_Store
+docker-compose.yaml

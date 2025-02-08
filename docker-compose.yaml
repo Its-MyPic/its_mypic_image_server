@@ -1,0 +1,12 @@
+services:
+  server:
+    image: ghcr.io/its-mypic/its_mypic_image_server:latest
+    restart: unless-stopped
+    ports:
+      - 5678:5678
+    environment:
+      SERVER_IP: 0.0.0.0
+      SERVER_PORT: 5678
+      IMAGE_SOURCE_PATH: /images
+    volumes:
+      - /path/to/images:/images:ro
