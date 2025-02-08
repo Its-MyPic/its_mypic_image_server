@@ -5,3 +5,4 @@
 *.env
 *.tar
 .DS_Store
+docker-compose.yaml
