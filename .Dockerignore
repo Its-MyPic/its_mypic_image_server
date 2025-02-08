@@ -1,6 +1,6 @@
-/.vscode
-/target
-/images
+.vscode
+target
+images
 *.env
 *.tar
 .DS_Store
