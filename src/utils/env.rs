@@ -1,7 +1,9 @@
 use tokio::sync::OnceCell;
 use anyhow::Result;
 
+
 pub(crate) static ENV_CONFIG: OnceCell<EnvConfig> = OnceCell::const_new();
+
 
 pub(crate) struct EnvConfig {
   pub(crate) server_ip: String,
