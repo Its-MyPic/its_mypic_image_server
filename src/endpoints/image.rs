@@ -56,12 +56,11 @@ pub(crate) async fn handler(
     _ => ""
   };
   let source_file_path = format!(
-    "{}/{}{}_{}.{}",
+    "{}/{}{}_{}.webp",
     env_config.image_source_path,
     season_name,
     episode,
-    target_frame,
-    env_config.image_source_format,
+    target_frame
   );
 
   if let Ok(exists) = fs::try_exists(&source_file_path).await {

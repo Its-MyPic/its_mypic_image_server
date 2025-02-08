@@ -51,10 +51,9 @@ pub(crate) async fn handler(
   };
 
   let source_file_path = format!(
-    "{}/{}.{}",
+    "{}/{}.webp",
     env_config.image_source_path,
-    target_file,
-    env_config.image_source_format
+    target_file
   );
 
   if let Ok(exists) = fs::try_exists(&source_file_path).await {
