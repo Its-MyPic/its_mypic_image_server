@@ -12,13 +12,23 @@ use tower_http::{
 };
 use anyhow::Result;
 use tracing::{Level, Span};
-use tracing_subscriber::fmt::time;
+use chrono::{DateTime, Local};
+use tracing_subscriber::fmt::time::FormatTime;
 use utils::env::ENV_CONFIG;
 
 
 mod endpoints;
 mod utils;
 
+
+struct CustomTimer;
+
+impl FormatTime for CustomTimer {
+  fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
+    let current_local: DateTime<Local> = Local::now();
+    write!(w, "{}", current_local.format("%F %T%.3f"))
+  }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -27,7 +37,7 @@ async fn main() -> Result<()> {
   let env_config = ENV_CONFIG.get().expect("Failed to load env config.");
 
   tracing_subscriber::fmt()
-    .with_timer(time::time())
+    .with_timer(CustomTimer)
     .with_target(false)
     .with_max_level(Level::INFO)
     .init();
