@@ -14,3 +14,10 @@ anyhow = { version = "1.0.95" }
 regex = { version = "1.11.1" }
 image = { version = "0.25.5"}
 dotenvy = { version = "0.15.7"}
+
+[profile.release]
+incremental = false
+lto = "fat"
+opt-level = 3
+panic = "abort"
+strip = "debuginfo"

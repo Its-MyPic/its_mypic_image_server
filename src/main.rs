@@ -1,8 +1,18 @@
+use std::time::Duration;
+
 use axum::{
-  http::Method, routing::get, Router
+  body::Body,
+  http::{Method, Request, Response},
+  routing::get,
+  Router
 };
-use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer};
+use tower_http::{
+  cors::{Any, CorsLayer},
+  trace::TraceLayer
+};
 use anyhow::Result;
+use tracing::{Level, Span};
+use tracing_subscriber::fmt::time;
 use utils::env::ENV_CONFIG;
 
 
@@ -17,8 +27,30 @@ async fn main() -> Result<()> {
   let env_config = ENV_CONFIG.get().expect("Failed to load env config.");
 
   tracing_subscriber::fmt()
-    .with_max_level(tracing::Level::INFO)
+    .with_timer(time::time())
+    .with_target(false)
+    .with_max_level(Level::INFO)
     .init();
+
+  let trace = TraceLayer::new_for_http()
+    .on_request(
+      |request: &Request<Body>, _span: &Span| {
+        tracing::info!(
+          " Incoming  [ {} ]  {}",
+          request.method(),
+          request.uri().path()
+        );
+      }
+    )
+    .on_response(
+      |_response: &Response<Body>, _latency: Duration, _span: &Span| {
+        tracing::info!(
+          " Outgoing  [ {} ]  Took {} ms",
+          _response.status().as_u16(),
+          _latency.as_millis()
+        );
+      }
+    );
 
   let cors = CorsLayer::new()
     .allow_methods([Method::GET])
@@ -27,7 +59,7 @@ async fn main() -> Result<()> {
   let app = Router::new()
     .route("/images/{target}", get(endpoints::legacy_image::handler))
     .route("/images/{season}/{episode}/{target}", get(endpoints::image::handler))
-    .layer(TraceLayer::new_for_http())
+    .layer(trace)
     .layer(cors);
 
   let listener = tokio::net::TcpListener::bind(
