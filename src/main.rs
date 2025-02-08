@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
   tracing_subscriber::fmt()
     .with_max_level(tracing::Level::INFO)
     .init();
-  
+
   let cors = CorsLayer::new()
     .allow_methods([Method::GET])
     .allow_origin(Any);
