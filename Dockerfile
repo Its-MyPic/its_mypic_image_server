@@ -1,4 +1,4 @@
-FROM rust:1-slim-buster AS builder
+FROM rust:1.84.1-slim-bullseye AS builder
 
 RUN update-ca-certificates
 
