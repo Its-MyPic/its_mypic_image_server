@@ -4,13 +4,9 @@ use axum::{
   body::Body, extract::Path, http::{Response, StatusCode}, response::IntoResponse
 };
 use image::ImageFormat;
-use regex::Regex;
-use tokio::{fs, sync::OnceCell};
+use tokio::fs;
 
 use crate::utils::{convert::{convert_animated_image, convert_static_image}, env::{EnvConfig, ENV_CONFIG}};
-
-
-static URL_FILE_REGEX: OnceCell<Regex> = OnceCell::const_new();
 
 
 pub(crate) async fn handler(
@@ -20,43 +16,27 @@ pub(crate) async fn handler(
   let episode = episode.to_lowercase();
   let target = target.to_lowercase();
 
-  let regex = match URL_FILE_REGEX.get_or_try_init(
-    || async {
-      Regex::new(r"(?P<target_frame>[0-9]*)\.(?P<target_format>jpg|jpeg|png|webp)|(?P<target_anim_frame>[0-9]*-[0-9]*)\.(?P<target_anim_format>png|webp|apng|gif)")
-    }
-  ).await {
-    Ok(regex) => regex,
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-  };
-
   let (
     target_frame,
-    target_format,
-    is_animated
-  ) = match regex.captures(&target) {
-    Some(result) => {
-      let result = result
-        .name("target_frame")
-        .zip(result.name("target_format"))
-        .zip(Some(false))
-        .or(
-          result.name("target_anim_frame")
-          .zip(result.name("target_anim_format"))
-          .zip(Some(true))
-        );
-
-      if let Some(result) = result {
-        (
-          result.0.0.as_str(),
-          result.0.1.as_str(),
-          result.1
-        )
-      } else {
-        return StatusCode::BAD_REQUEST.into_response();
-      }
-    },
-    None => return StatusCode::BAD_REQUEST.into_response()
+    target_format
+  ) = match target.split_once(".") {
+    Some(r) => r,
+    None => return StatusCode::BAD_REQUEST.into_response(),
   };
+  
+  let animated_frame = target_frame.split_once("-");
+
+  let target_format = match target_format {
+    "png" => ImageFormat::Png,
+    "gif" => ImageFormat::Gif,
+    "webp" => ImageFormat::WebP,
+    "jpg" | "jpeg" => ImageFormat::Jpeg,
+    _ => return StatusCode::BAD_REQUEST.into_response()
+  };
+
+  if animated_frame.is_some() && target_format != ImageFormat::Gif {
+    return StatusCode::BAD_REQUEST.into_response();
+  }
 
   let env_config = match ENV_CONFIG.get() {
     Some(env) => env,
@@ -64,27 +44,26 @@ pub(crate) async fn handler(
   };
 
   let season_name = match season.as_str() {
-    "mygo" => "",
-    "ave" | "ave-mujica" => "ave-",
+    "1" | "mygo" => "",
+    "2" | "ave" | "ave-mujica" => "ave-",
     _ => ""
   };
 
-  if is_animated {
-    handle_animated_image(
+  if let Some(animated_frame) = animated_frame {
+    return handle_animated_image(
       env_config,
       &season_name,
       &episode,
-      target_frame,
-      target_format
-    ).await
+      animated_frame
+    ).await;
   } else {
-    handle_static_image(
+    return handle_static_image(
       env_config,
       &season_name,
       &episode,
       target_frame,
       target_format
-    ).await
+    ).await;
   }
 }
 
@@ -92,37 +71,35 @@ async fn handle_animated_image(
   env_config: &EnvConfig,
   season_name: &str,
   episode: &str,
-  target_frame: &str,
-  target_format: &str
+  animated_frame: (&str, &str)
 ) -> Response<Body> {
-  let (start_frame, end_frame) = match target_frame.split_once("-") {
-    Some(r) => {
-      match r.0.parse::<u32>().ok().zip(r.1.parse::<u32>().ok()) {
-        Some(r) => r,
-        None => return StatusCode::BAD_REQUEST.into_response(),
-      }
-    },
-    None => return StatusCode::BAD_REQUEST.into_response()
+  let u32_frame: Option<(u32, u32)> = animated_frame.0.parse().ok()
+    .zip(animated_frame.1.parse().ok());
+
+  let (start_frame, end_frame) = match u32_frame {
+    Some(r) => r,
+    None => return StatusCode::BAD_REQUEST.into_response(),
   };
 
-  if start_frame >= end_frame {
+  if start_frame >= end_frame || start_frame <= 0 {
     return StatusCode::BAD_REQUEST.into_response();
   }
 
-  let target_format = match target_format {
-    "png" | "apng" => ImageFormat::Png,
-    "gif" => ImageFormat::Gif,
-    "webp" => ImageFormat::WebP,
-    _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
-  };
+  let frames = end_frame - start_frame;
+  
+  if frames >= 3600 {
+    return (
+      StatusCode::PAYLOAD_TOO_LARGE,
+      "大於 150 秒（3600 幀）的片段無法透過此 API 請求，請向開發者提交片段投稿"
+    ).into_response();
+  }
 
   convert_animated_image(
     env_config,
     start_frame,
-    end_frame,
+    frames,
     &season_name,
-    &episode,
-    target_format
+    &episode
   ).await
 }
 
@@ -131,7 +108,7 @@ async fn handle_static_image(
   season_name: &str,
   episode: &str,
   target_frame: &str,
-  target_format: &str
+  target_format: ImageFormat
 ) -> Response<Body> {
   let source_file_path = format!(
     "{}/{}{}_{}.webp",
@@ -152,13 +129,6 @@ async fn handle_static_image(
   let reader = match fs::read(&source_file_path).await {
     Ok(img) => Cursor::new(img),
     Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-  };
-
-  let target_format = match target_format {
-    "jpg" | "jpeg" => ImageFormat::Jpeg,
-    "png" => ImageFormat::Png,
-    "webp" => ImageFormat::WebP,
-    _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
   };
 
   convert_static_image(reader, target_format).await
