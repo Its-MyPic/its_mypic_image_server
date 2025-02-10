@@ -11,7 +11,7 @@
   * `season`: String (`mygo`, `ave`, `ave-mujica`)
   * `episode`: String (`1-3`, `4`, `5`, ..., `13`)
   * `startFrame`: u32
-  * `endFrame`: u32 (`endFrame` must greater than `startFrame`)
+  * `endFrame`: u32 (`endFrame` must be greater than `startFrame`)
   * `format`: String (`gif`, `apng`, `png`, `webp`)
     * `gif`, `webp`: Limited in 120 frames (5 seconds)
     * `apng`, `png`: Limited in 240 frames (10 seconds)
