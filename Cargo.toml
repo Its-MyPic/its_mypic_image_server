@@ -12,9 +12,12 @@ tracing = { version = "0.1.41"}
 tracing-subscriber = { version = "0.3.19" }
 anyhow = { version = "1.0.95" }
 regex = { version = "1.11.1" }
-image = { version = "0.25.5"}
-dotenvy = { version = "0.15.7"}
-chrono = { version = "0.4.39"}
+image = { version = "0.25.5" }
+gif = { version = "0.13.1" }
+png = { version = "0.17.16" }
+webp-animation = { version = "0.9.0" }
+dotenvy = { version = "0.15.7" }
+chrono = { version = "0.4.39" }
 
 [profile.release]
 incremental = false

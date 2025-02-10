@@ -12,23 +12,12 @@ use tower_http::{
 };
 use anyhow::Result;
 use tracing::{Level, Span};
-use chrono::{DateTime, Local};
-use tracing_subscriber::fmt::time::FormatTime;
 use utils::env::ENV_CONFIG;
 
 
 mod endpoints;
 mod utils;
 
-
-struct CustomTimer;
-
-impl FormatTime for CustomTimer {
-  fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
-    let current_local: DateTime<Local> = Local::now();
-    write!(w, "{}", current_local.format("%F %T%.3f"))
-  }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,7 +26,7 @@ async fn main() -> Result<()> {
   let env_config = ENV_CONFIG.get().expect("Failed to load env config.");
 
   tracing_subscriber::fmt()
-    .with_timer(CustomTimer)
+    .with_timer(utils::timer::CustomLogTimer)
     .with_target(false)
     .with_max_level(Level::INFO)
     .init();
@@ -53,11 +42,11 @@ async fn main() -> Result<()> {
       }
     )
     .on_response(
-      |_response: &Response<Body>, _latency: Duration, _span: &Span| {
+      |response: &Response<Body>, latency: Duration, _span: &Span| {
         tracing::info!(
           " Outgoing  [ {} ]  Took {} ms",
-          _response.status().as_u16(),
-          _latency.as_millis()
+          response.status().as_u16(),
+          latency.as_millis()
         );
       }
     );

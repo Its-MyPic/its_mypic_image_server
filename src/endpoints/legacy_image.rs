@@ -9,7 +9,7 @@ use image::ImageFormat;
 use regex::Regex;
 use tokio::{fs, sync::OnceCell};
 
-use crate::utils::{convert::convert_image, env::ENV_CONFIG};
+use crate::utils::{convert::convert_static_image, env::ENV_CONFIG};
 
 
 static LEGACY_URL_FILE_REGEX: OnceCell<Regex> = OnceCell::const_new();
@@ -31,14 +31,20 @@ pub(crate) async fn handler(
 
   let (target_file, target_format) = match regex.captures(&target) {
     Some(result) => {
-      if result.len() != 3 {
-        return StatusCode::BAD_REQUEST.into_response()
-      }
+      let result = result
+        .name("target_file")
+        .zip(
+          result.name("target_format")
+        );
 
-      (
-        result.name("target_file").unwrap().as_str(),
-        result.name("target_format").unwrap().as_str()
-      )
+      if let Some(result) = result {
+        (
+          result.0.as_str(),
+          result.1.as_str()
+        )
+      } else {
+        return StatusCode::BAD_REQUEST.into_response();
+      }
     },
     None => {
       return StatusCode::BAD_REQUEST.into_response();
@@ -71,16 +77,14 @@ pub(crate) async fn handler(
 
   match target_format {
     "jpg" | "jpeg" => {
-      convert_image(reader, ImageFormat::Jpeg)
+      convert_static_image(reader, ImageFormat::Jpeg).await
     }
     "png" => {
-      convert_image(reader, ImageFormat::Png)
+      convert_static_image(reader, ImageFormat::Png).await
     }
     "webp" => {
-      convert_image(reader, ImageFormat::WebP)
+      convert_static_image(reader, ImageFormat::WebP).await
     }
-    _ => {
-      return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
-    }
+    _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
   }
 }
