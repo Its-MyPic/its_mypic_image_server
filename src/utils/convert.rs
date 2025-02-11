@@ -120,6 +120,7 @@ async fn encode_gif(
         "-start_number", &start_frame.to_string(),
         "-frames:v", &frames.to_string(),
         "-f", "gif",
+        "-framerate", "24",
         "pipe:1"
       ]
     )
