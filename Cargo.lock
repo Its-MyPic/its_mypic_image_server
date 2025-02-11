@@ -696,6 +696,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "image",
+ "parking_lot",
  "regex",
  "tokio",
  "tokio-util",

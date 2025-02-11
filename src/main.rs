@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use axum::{
   body::Body,
@@ -6,13 +6,14 @@ use axum::{
   routing::get,
   Router
 };
+use parking_lot::RwLock;
 use tower_http::{
   cors::{Any, CorsLayer},
   trace::TraceLayer
 };
 use anyhow::Result;
 use tracing::{Level, Span};
-use utils::env::ENV_CONFIG;
+use utils::{env::ENV_CONFIG, task::Scheduler};
 
 
 mod endpoints;
@@ -55,11 +56,22 @@ async fn main() -> Result<()> {
     .allow_methods([Method::GET])
     .allow_origin(Any);
 
+  let scheduler = Arc::new(
+    RwLock::new(
+      Scheduler::new(
+        env_config.max_ffmpeg_process.unwrap_or(4)
+      )
+    )
+  );
+
+  scheduler.write().start();
+
   let app = Router::new()
     .route("/images/{target}", get(endpoints::legacy_image::handler))
     .route("/images/{season}/{episode}/{target}", get(endpoints::image::handler))
     .layer(trace)
-    .layer(cors);
+    .layer(cors)
+    .with_state(scheduler);
 
   let listener = tokio::net::TcpListener::bind(
     format!(

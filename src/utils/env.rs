@@ -9,7 +9,8 @@ pub(crate) struct EnvConfig {
   pub(crate) server_ip: String,
   pub(crate) server_port: String,
   pub(crate) image_source_path: String,
-  pub(crate) animate_frame_limit: Option<u32>
+  pub(crate) animate_frame_limit: Option<u32>,
+  pub(crate) max_ffmpeg_process: Option<u32>
 }
 
 impl EnvConfig {
@@ -21,7 +22,10 @@ impl EnvConfig {
         image_source_path: std::env::var("IMAGE_SOURCE_PATH")?,
         animate_frame_limit: std::env::var("ANIMATE_FRAME_LIMIT").ok().map(
           |i| i.parse().expect("Failed to parse env.")
-        )
+        ),
+        max_ffmpeg_process: std::env::var("MAX_FFMPEG_PROCESS").ok().map(
+          |i: String| i.parse().expect("Failed to parse env.")
+        ),
       }
     )
   }

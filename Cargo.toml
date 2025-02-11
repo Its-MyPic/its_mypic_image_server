@@ -15,6 +15,7 @@ regex = { version = "1.11.1" }
 image = { version = "0.25.5" }
 dotenvy = { version = "0.15.7" }
 chrono = { version = "0.4.39" }
+parking_lot = "0.12.3"
 
 [profile.release]
 incremental = false

@@ -1,16 +1,33 @@
-use std::io::Cursor;
+use std::{io::Cursor, sync::Arc};
 
 use axum::{
-  body::Body, extract::Path, http::{Response, StatusCode}, response::IntoResponse
+  body::Body,
+  extract::{Path, State},
+  http::{Response, StatusCode},
+  response::IntoResponse
 };
 use image::ImageFormat;
+use parking_lot::RwLock;
 use tokio::fs;
 
-use crate::utils::{convert::{convert_animated_image, convert_static_image}, env::{EnvConfig, ENV_CONFIG}};
+use crate::{
+  utils::{
+    convert::{
+      convert_animated_image,
+      convert_static_image
+    },
+    env::{
+      EnvConfig,
+      ENV_CONFIG
+    }
+  },
+  Scheduler
+};
 
 
 pub(crate) async fn handler(
   Path((season, episode, target)): Path<(String, String, String)>,
+  State(state): State<Arc<RwLock<Scheduler>>>,
 ) -> impl IntoResponse {
   let season = season.to_lowercase();
   let episode = episode.to_lowercase();
@@ -54,7 +71,8 @@ pub(crate) async fn handler(
       env_config,
       &season_name,
       &episode,
-      animated_frame
+      animated_frame,
+      state
     ).await;
   } else {
     return handle_static_image(
@@ -71,7 +89,8 @@ async fn handle_animated_image(
   env_config: &EnvConfig,
   season_name: &str,
   episode: &str,
-  animated_frame: (&str, &str)
+  animated_frame: (&str, &str),
+  state: Arc<RwLock<Scheduler>>
 ) -> Response<Body> {
   let u32_frame: Option<(u32, u32)> = animated_frame.0.parse().ok()
     .zip(animated_frame.1.parse().ok());
@@ -101,7 +120,8 @@ async fn handle_animated_image(
     start_frame,
     frames,
     &season_name,
-    &episode
+    &episode,
+    state
   ).await
 }
 
