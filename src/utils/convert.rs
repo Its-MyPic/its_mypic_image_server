@@ -53,7 +53,7 @@ pub(crate) async fn convert_static_image(
 pub(crate) async fn convert_animated_image(
   env_config: &EnvConfig,
   start_frame: u32,
-  end_frame: u32,
+  frames: u32,
   season_name: &str,
   episode: &str
 ) -> Response<Body> {
@@ -70,7 +70,7 @@ pub(crate) async fn convert_animated_image(
     env_config.image_source_path,
     season_name,
     episode,
-    start_frame
+    start_frame + frames
   );
 
   let is_segment_exists = fs::try_exists(&start_fram_file_path)
@@ -93,7 +93,7 @@ pub(crate) async fn convert_animated_image(
   encode_gif(
     env_config,
     start_frame,
-    end_frame,
+    frames,
     season_name,
     episode
   ).await
@@ -116,8 +116,8 @@ async fn encode_gif(
   let output = Command::new("ffmpeg")
     .args(
       [
-        "-i", &file_pattern,
         "-start_number", &start_frame.to_string(),
+        "-i", &file_pattern,
         "-frames:v", &frames.to_string(),
         "-f", "gif",
         "-framerate", "24",
