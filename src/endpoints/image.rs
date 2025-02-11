@@ -87,11 +87,13 @@ async fn handle_animated_image(
 
   let frames = end_frame - start_frame;
   
-  if frames >= 3600 {
-    return (
-      StatusCode::PAYLOAD_TOO_LARGE,
-      "大於 150 秒（3600 幀）的片段無法透過此 API 請求，請向開發者提交片段投稿"
-    ).into_response();
+  if let Some(animate_frame_limit) = &env_config.animate_frame_limit {
+    if frames >= *animate_frame_limit {
+      return (
+        StatusCode::PAYLOAD_TOO_LARGE,
+        "大於 150 秒（3600 幀）的片段無法透過此 API 請求，請向開發者提交片段投稿"
+      ).into_response();
+    }
   }
 
   convert_animated_image(
