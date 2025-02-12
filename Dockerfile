@@ -5,8 +5,10 @@ RUN update-ca-certificates
 WORKDIR /its_mypic_image_server
 
 COPY . .
-
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    --mount=type=cache,target=/its_mypic_image_server/target/ \
+    cargo build --release
 
 
 FROM gcr.io/distroless/cc
