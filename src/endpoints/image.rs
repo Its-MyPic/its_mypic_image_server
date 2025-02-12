@@ -37,7 +37,10 @@ pub(crate) async fn handler(
     target_format
   ) = match target.split_once(".") {
     Some(r) => r,
-    None => return StatusCode::BAD_REQUEST.into_response(),
+    None => return (
+      StatusCode::BAD_REQUEST,
+      "Failed to parse target file."
+    ).into_response(),
   };
   
   let animated_frame = target_frame.split_once("-");
@@ -47,11 +50,14 @@ pub(crate) async fn handler(
     "gif" => ImageFormat::Gif,
     "webp" => ImageFormat::WebP,
     "jpg" | "jpeg" => ImageFormat::Jpeg,
-    _ => return StatusCode::BAD_REQUEST.into_response()
+    _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
   };
 
   if animated_frame.is_some() && target_format != ImageFormat::Gif {
-    return StatusCode::BAD_REQUEST.into_response();
+    return (
+      StatusCode::BAD_REQUEST,
+      "Cannot request static file with frame range."
+    ).into_response();
   }
 
   let env_config = match ENV_CONFIG.get() {
@@ -99,11 +105,17 @@ async fn handle_animated_image(
 
   let (start_frame, end_frame) = match u32_frame {
     Some(r) => r,
-    None => return StatusCode::BAD_REQUEST.into_response(),
+    None => return (
+      StatusCode::BAD_REQUEST,
+      "Failed to convert frame range to u32."
+    ).into_response(),
   };
 
   if start_frame >= end_frame || start_frame <= 0 {
-    return StatusCode::BAD_REQUEST.into_response();
+    return (
+      StatusCode::BAD_REQUEST,
+      "Invalid frame range (left >= right || left <= 0)."
+    ).into_response();
   }
 
   let frames = end_frame - start_frame;
@@ -144,7 +156,10 @@ async fn handle_static_image(
 
   if let Ok(exists) = fs::try_exists(&source_file_path).await {
     if !exists {
-      return StatusCode::NOT_FOUND.into_response();
+      return (
+        StatusCode::NOT_FOUND,
+        "Target file not exists."
+      ).into_response();
     }
   } else {
     return (

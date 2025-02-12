@@ -70,7 +70,10 @@ pub(crate) async fn handler(
 
   if let Ok(exists) = fs::try_exists(&source_file_path).await {
     if !exists {
-      return StatusCode::NOT_FOUND.into_response();
+      return (
+        StatusCode::NOT_FOUND,
+        "Target file not exists."
+      ).into_response();
     }
   } else {
     return (
@@ -87,16 +90,12 @@ pub(crate) async fn handler(
     ).into_response(),
   };
 
-  match target_format {
-    "jpg" | "jpeg" => {
-      convert_static_image(reader, ImageFormat::Jpeg).await
-    }
-    "png" => {
-      convert_static_image(reader, ImageFormat::Png).await
-    }
-    "webp" => {
-      convert_static_image(reader, ImageFormat::WebP).await
-    }
+  let target_format = match target_format {
+    "jpg" | "jpeg" => ImageFormat::Jpeg,
+    "png" => ImageFormat::Png,
+    "webp" => ImageFormat::WebP,
     _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
-  }
+  };
+
+  convert_static_image(reader, target_format).await
 }
