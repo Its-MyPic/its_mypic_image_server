@@ -7,7 +7,6 @@ use axum::{
   response::IntoResponse
 };
 use image::ImageFormat;
-use parking_lot::RwLock;
 use tokio::fs;
 
 use crate::{
@@ -27,7 +26,7 @@ use crate::{
 
 pub(crate) async fn handler(
   Path((season, episode, target)): Path<(String, String, String)>,
-  State(state): State<Arc<RwLock<Scheduler>>>,
+  State(scheduler): State<Arc<Scheduler>>,
 ) -> impl IntoResponse {
   let season = season.to_lowercase();
   let episode = episode.to_lowercase();
@@ -72,7 +71,7 @@ pub(crate) async fn handler(
       &season_name,
       &episode,
       animated_frame,
-      state
+      scheduler
     ).await;
   } else {
     return handle_static_image(
@@ -90,7 +89,7 @@ async fn handle_animated_image(
   season_name: &str,
   episode: &str,
   animated_frame: (&str, &str),
-  state: Arc<RwLock<Scheduler>>
+  scheduler: Arc<Scheduler>
 ) -> Response<Body> {
   let u32_frame: Option<(u32, u32)> = animated_frame.0.parse().ok()
     .zip(animated_frame.1.parse().ok());
@@ -121,7 +120,7 @@ async fn handle_animated_image(
     frames,
     &season_name,
     &episode,
-    state
+    scheduler
   ).await
 }
 

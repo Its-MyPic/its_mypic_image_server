@@ -8,5 +8,7 @@ services:
       SERVER_IP: 0.0.0.0
       SERVER_PORT: 5678
       IMAGE_SOURCE_PATH: /images
+      ANIMATE_FRAME_LIMIT: 3600
+      MAX_FFMPEG_PROCESS: 4
     volumes:
       - /path/to/images:/images:ro

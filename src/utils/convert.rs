@@ -12,7 +12,10 @@ use tokio_util::io::ReaderStream;
 
 use crate::Scheduler;
 
-use super::{env::EnvConfig, task::{Task, TaskData}};
+use super::{
+  env::EnvConfig,
+  task::{Task, TaskData}
+};
 
 
 static SOURCE_FORMAT: ImageFormat = ImageFormat::WebP;
@@ -63,7 +66,7 @@ pub(crate) async fn convert_animated_image(
   frames: u32,
   season_name: &str,
   episode: &str,
-  state: Arc<RwLock<Scheduler>>
+  scheduler: Arc<Scheduler>
 ) -> Response<Body> {
   let start_fram_file_path = format!(
     "{}/{}{}_{}.webp",
@@ -105,33 +108,20 @@ pub(crate) async fn convert_animated_image(
     episode
   );
 
-  let output = Vec::new();
+  let output = RwLock::new(Vec::new());
 
-  let task = Arc::new(
-    RwLock::new(
-      Task::new(
-        TaskData::new(
-          start_frame,
-          frames,
-          file_pattern,
-          output
-        )
-      )
+  let task = Task::new(
+    TaskData::new(
+      start_frame,
+      frames,
+      file_pattern,
+      output
     )
   );
 
-  let task_send = task.clone();
-  state.write().add_task(task_send);
+  scheduler.add_task(task.clone());
   
-  let (
-    cmtx,
-    cvar
-  ) = &*task.read().sem.clone();
-
-  let mut done = cmtx.lock();
-  if !*done {
-    cvar.wait(&mut done);
-  }
+  task.sem.wait();
 
   if let Ok(task) = Arc::try_unwrap(task) {
     return (
@@ -139,7 +129,7 @@ pub(crate) async fn convert_animated_image(
       Body::from_stream(
         ReaderStream::new(
           Cursor::new(
-            task.into_inner().data.output
+            task.data.output.into_inner()
           )
         )
       )

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use axum::{
   body::Body,
@@ -6,13 +6,12 @@ use axum::{
   routing::get,
   Router
 };
-use parking_lot::RwLock;
 use tower_http::{
   cors::{Any, CorsLayer},
   trace::TraceLayer
 };
 use anyhow::Result;
-use tracing::{Level, Span};
+use tracing::{info, Level, Span};
 use utils::{env::ENV_CONFIG, task::Scheduler};
 
 
@@ -35,8 +34,8 @@ async fn main() -> Result<()> {
   let trace = TraceLayer::new_for_http()
     .on_request(
       |request: &Request<Body>, _span: &Span| {
-        tracing::info!(
-          " Incoming  [ {} ]  {}",
+        info!(
+          " [ {} ]  ->  {}",
           request.method(),
           request.uri().path()
         );
@@ -44,8 +43,8 @@ async fn main() -> Result<()> {
     )
     .on_response(
       |response: &Response<Body>, latency: Duration, _span: &Span| {
-        tracing::info!(
-          " Outgoing  [ {} ]  Took {} ms",
+        info!(
+          " [ {} ]  <-  Took {} ms",
           response.status().as_u16(),
           latency.as_millis()
         );
@@ -56,15 +55,11 @@ async fn main() -> Result<()> {
     .allow_methods([Method::GET])
     .allow_origin(Any);
 
-  let scheduler = Arc::new(
-    RwLock::new(
-      Scheduler::new(
-        env_config.max_ffmpeg_process.unwrap_or(4)
-      )
-    )
+  let scheduler = Scheduler::new(
+    env_config.max_ffmpeg_process.unwrap_or(4)
   );
 
-  scheduler.write().start();
+  scheduler.start();
 
   let app = Router::new()
     .route("/images/{target}", get(endpoints::legacy_image::handler))
