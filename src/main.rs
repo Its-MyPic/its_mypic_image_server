@@ -7,8 +7,7 @@ use axum::{
   Router
 };
 use tower_http::{
-  cors::{Any, CorsLayer},
-  trace::TraceLayer
+  classify::ServerErrorsFailureClass, cors::{Any, CorsLayer}, trace::TraceLayer
 };
 use anyhow::Result;
 use tracing::{info, Level, Span};
@@ -47,6 +46,15 @@ async fn main() -> Result<()> {
           " [ {} ]  <-  Took {} ms",
           response.status().as_u16(),
           latency.as_millis()
+        );
+      }
+    )
+    .on_failure(
+      |err: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
+        info!(
+          " [ ERR ]  <x-  Took {} ms, {:#?}",
+          latency.as_millis(),
+          err
         );
       }
     );
