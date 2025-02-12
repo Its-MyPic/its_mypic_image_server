@@ -132,7 +132,8 @@ impl Scheduler {
           tokio::task::spawn_blocking(
             move || {
               task.execute();
-
+              task.sem.release();
+              drop(task);
               inner_scheduler.task_sem.release();
             }
           );
@@ -204,8 +205,6 @@ impl Task {
       .output()
       .unwrap_or_else(|_| panic!("FFMPEG Error"))
       .stdout;
-
-    self.sem.release();
   }
 }
 
