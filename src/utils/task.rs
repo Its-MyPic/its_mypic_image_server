@@ -4,6 +4,7 @@ use std::{
   time
 };
 
+use crossbeam::channel::Sender;
 use parking_lot::{Mutex, RwLock, Condvar};
 use priority_queue::DoublePriorityQueue;
 use tracing::info;
@@ -132,8 +133,6 @@ impl Scheduler {
           tokio::task::spawn_blocking(
             move || {
               task.execute();
-              task.sem.release();
-              drop(task);
               inner_scheduler.task_sem.release();
             }
           );
@@ -155,7 +154,6 @@ impl Scheduler {
 
 #[derive(Debug)]
 pub(crate) struct Task {
-  pub(crate) sem: MonoSemaphore,
   pub(crate) data: TaskData,
   _ts: u128
 }
@@ -180,7 +178,6 @@ impl Task {
   pub(crate) fn new(data: TaskData) -> Arc<Self> {
     Arc::new(
       Self {
-        sem: MonoSemaphore::new(false),
         data,
         _ts: time::SystemTime::now().duration_since(
           time::UNIX_EPOCH
@@ -190,7 +187,8 @@ impl Task {
   }
 
   fn execute(self: &Arc<Self>) {
-    *self.data.output.write() = Command::new("ffmpeg")
+    self.data.sender.send(
+      Command::new("ffmpeg")
       .args(
         [
           "-start_number", &self.data.start_frame.to_string(),
@@ -204,7 +202,8 @@ impl Task {
       .stdout(Stdio::piped())
       .output()
       .unwrap_or_else(|_| panic!("FFMPEG Error"))
-      .stdout;
+      .stdout
+    ).unwrap_or_else(|_| panic!("Channel Error"));
   }
 }
 
@@ -213,7 +212,7 @@ pub(crate) struct TaskData {
   start_frame: u32,
   frames: u32,
   file_pattern: String,
-  pub(crate) output: RwLock<Vec<u8>>
+  pub(crate) sender: Sender<Vec<u8>>
 }
 
 impl std::hash::Hash for TaskData {
@@ -239,13 +238,13 @@ impl TaskData {
     start_frame: u32,
     frames: u32,
     file_pattern: String,
-    output: RwLock<Vec<u8>>
+    sender: Sender<Vec<u8>>
   ) -> Self {
     Self {
       start_frame,
       frames,
       file_pattern,
-      output
+      sender
     }
   }
 }

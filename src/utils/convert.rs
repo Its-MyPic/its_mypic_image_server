@@ -5,8 +5,8 @@ use axum::{
   http::{Response, StatusCode},
   response::IntoResponse
 };
+use crossbeam::channel::bounded;
 use image::{ImageFormat, ImageReader};
-use parking_lot::RwLock;
 use tokio::fs;
 use tokio_util::io::ReaderStream;
 
@@ -120,28 +120,26 @@ pub(crate) async fn convert_animated_image(
     episode
   );
 
-  let output = RwLock::new(Vec::new());
+  let (send, recv) = bounded(1);
 
   let task = Task::new(
     TaskData::new(
       start_frame,
       frames,
       file_pattern,
-      output
+      send
     )
   );
 
   scheduler.add_task(task.clone());
-  
-  task.sem.wait();
 
-  if let Ok(task) = Arc::try_unwrap(task) {
+  if let Ok(data) = recv.recv() {
     return (
       StatusCode::OK,
       Body::from_stream(
         ReaderStream::new(
           Cursor::new(
-            task.data.output.into_inner()
+            data
           )
         )
       )
@@ -149,7 +147,7 @@ pub(crate) async fn convert_animated_image(
   } else {
     return (
       StatusCode::INTERNAL_SERVER_ERROR,
-      "Failed to unwrap response data buffer."
+      "Failed to receive data from channel."
     ).into_response();
   }
 }
