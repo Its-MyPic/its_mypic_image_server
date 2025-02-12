@@ -5,6 +5,7 @@ use std::{
 };
 
 use parking_lot::{Mutex, RwLock, Condvar};
+use priority_queue::DoublePriorityQueue;
 use tracing::info;
 
 
@@ -96,7 +97,7 @@ impl MonoSemaphore {
 pub(crate) struct Scheduler {
   loop_sem: MonoSemaphore,
   task_sem: Semaphore,
-  tasks: RwLock<Vec<Arc<Task>>>
+  tasks: RwLock<DoublePriorityQueue<Arc<Task>, u32>>
 }
 
 impl Scheduler {
@@ -105,7 +106,7 @@ impl Scheduler {
       Self {
         loop_sem: MonoSemaphore::new(false),
         task_sem: Semaphore::new(max_process, max_process),
-        tasks: RwLock::new(Vec::new()),
+        tasks: RwLock::new(DoublePriorityQueue::new()),
       }
     )
   }
@@ -117,12 +118,12 @@ impl Scheduler {
       move || loop {
         scheduler.loop_sem.wait();
 
-        if scheduler.tasks.read().len() > 0 {
+        if !scheduler.tasks.read().is_empty() {
           scheduler.task_sem.wait();
 
-          let task = scheduler.tasks
+          let (task, _) = scheduler.tasks
             .write()
-            .pop()
+            .pop_min()
             .unwrap_or_else(|| panic!("Failed to get task"));
 
           let inner_scheduler = scheduler.clone();
@@ -143,7 +144,9 @@ impl Scheduler {
   }
 
   pub(crate) fn add_task(self: &Arc<Self>, task: Arc<Task>) {
-    self.tasks.write().push(task);
+    let priority = task.data.frames;
+
+    self.tasks.write().push(task, priority);
 
     self.loop_sem.release();
   }
@@ -155,6 +158,22 @@ pub(crate) struct Task {
   pub(crate) data: TaskData,
   _ts: u128
 }
+
+impl std::hash::Hash for Task {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state);
+    self._ts.hash(state);
+  }
+}
+
+impl std::cmp::PartialEq for Task {
+  fn eq(&self, other: &Self) -> bool {
+    self.data == other.data &&
+    self._ts == other._ts
+  }
+}
+
+impl std::cmp::Eq for Task {}
 
 impl Task {
   pub(crate) fn new(data: TaskData) -> Arc<Self> {
@@ -197,6 +216,24 @@ pub(crate) struct TaskData {
   file_pattern: String,
   pub(crate) output: RwLock<Vec<u8>>
 }
+
+impl std::hash::Hash for TaskData {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.start_frame.hash(state);
+    self.frames.hash(state);
+    self.file_pattern.hash(state);
+  }
+}
+
+impl std::cmp::PartialEq for TaskData {
+  fn eq(&self, other: &Self) -> bool {
+    self.start_frame == other.start_frame &&
+    self.frames == other.frames &&
+    self.file_pattern == other.file_pattern
+  }
+}
+
+impl std::cmp::Eq for TaskData {}
 
 impl TaskData {
   pub(crate) fn new(
