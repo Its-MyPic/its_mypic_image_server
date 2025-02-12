@@ -56,7 +56,10 @@ pub(crate) async fn handler(
 
   let env_config = match ENV_CONFIG.get() {
     Some(env) => env,
-    None => return StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    None => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to parse target file."
+    ).into_response()
   };
 
   let season_name = match season.as_str() {
@@ -144,12 +147,18 @@ async fn handle_static_image(
       return StatusCode::NOT_FOUND.into_response();
     }
   } else {
-    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Target source file not exists."
+    ).into_response();
   }
 
   let reader = match fs::read(&source_file_path).await {
     Ok(img) => Cursor::new(img),
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    Err(_) => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to read target source file."
+    ).into_response(),
   };
 
   convert_static_image(reader, target_format).await

@@ -40,7 +40,10 @@ pub(crate) async fn convert_static_image(
 
   let decoded_img = match img_reader.decode() {
     Ok(img) => img,
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    Err(_) => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to decode source image."
+    ).into_response(),
   };
 
   match decoded_img.write_to(&mut buf, target_format) {
@@ -55,7 +58,10 @@ pub(crate) async fn convert_static_image(
       ).into_response();
     },
     Err(_) => {
-      return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+      return (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "Failed to write encoded image to response buffer."
+      ).into_response();
     },
   };
 }
@@ -95,10 +101,16 @@ pub(crate) async fn convert_animated_image(
 
   if let Some(exists) = is_segment_exists {
     if !exists.0 || !exists.1 {
-      return StatusCode::NOT_FOUND.into_response();
+      return (
+        StatusCode::NOT_FOUND,
+        "Start or end image file not exists."
+      ).into_response();
     }
   } else {
-    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to read start or end image file."
+    ).into_response();
   }
 
   let file_pattern = format!(
@@ -135,6 +147,9 @@ pub(crate) async fn convert_animated_image(
       )
     ).into_response();
   } else {
-    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to unwrap response data buffer."
+    ).into_response();
   }
 }

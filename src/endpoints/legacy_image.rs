@@ -26,7 +26,10 @@ pub(crate) async fn handler(
     }
   ).await {
     Ok(regex) => regex,
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    Err(_) => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to parse target file."
+    ).into_response(),
   };
 
   let (target_file, target_format) = match regex.captures(&target) {
@@ -53,7 +56,10 @@ pub(crate) async fn handler(
 
   let env_config = match ENV_CONFIG.get() {
     Some(env) => env,
-    None => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    None => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to read server env."
+    ).into_response(),
   };
 
   let source_file_path = format!(
@@ -67,12 +73,18 @@ pub(crate) async fn handler(
       return StatusCode::NOT_FOUND.into_response();
     }
   } else {
-    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Target source file not exists."
+    ).into_response();
   }
 
   let reader = match fs::read(&source_file_path).await {
     Ok(img) => Cursor::new(img),
-    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    Err(_) => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to read target source file."
+    ).into_response(),
   };
 
   match target_format {
