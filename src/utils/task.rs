@@ -125,7 +125,12 @@ impl Scheduler {
           let (task, _) = scheduler.tasks
             .write()
             .pop_min()
-            .unwrap_or_else(|| panic!("Failed to get task"));
+            .unwrap_or_else(
+              || {
+                info!(" [ Sch ]  Scheduler Panicked! Failed to Get Task");
+                panic!();
+              }
+            );
 
           let inner_scheduler = scheduler.clone();
 
@@ -201,9 +206,19 @@ impl Task {
       )
       .stdout(Stdio::piped())
       .output()
-      .unwrap_or_else(|_| panic!("FFMPEG Error"))
+      .unwrap_or_else(
+        |_| {
+          info!(" [ Tsk ]  Task Panicked! FFMPEG Error");
+          panic!();
+        }
+      )
       .stdout
-    ).unwrap_or_else(|_| panic!("Channel Error"));
+    ).unwrap_or_else(
+      |_| {
+        info!(" [ Tsk ]  Task Panicked! Channel Error");
+        panic!();
+      }
+    );
   }
 }
 
