@@ -24,13 +24,29 @@ use crate::{
 };
 
 
+static EPISODE_SPLIT_FRAME: [u32; 3] = [0, 34288, 68334];
+
+
 pub(crate) async fn handler(
-  Path((season, episode, target)): Path<(String, String, String)>,
+  Path((season, episode, target)): Path<(u8, String, String)>,
   State(scheduler): State<Arc<Scheduler>>,
 ) -> impl IntoResponse {
-  let season = season.to_lowercase();
-  let episode = episode.to_lowercase();
+  let season = match season {
+    1 => "",
+    2 => "ave-",
+    _ => ""
+  };
+
+  let mut episode = episode.to_lowercase();
   let target = target.to_lowercase();
+
+  let env_config = match ENV_CONFIG.get() {
+    Some(env) => env,
+    None => return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "Failed to load server env."
+    ).into_response()
+  };
 
   let (
     target_frame,
@@ -42,8 +58,6 @@ pub(crate) async fn handler(
       "Failed to parse target file."
     ).into_response(),
   };
-  
-  let animated_frame = target_frame.split_once("-");
 
   let target_format = match target_format {
     "png" => ImageFormat::Png,
@@ -52,6 +66,14 @@ pub(crate) async fn handler(
     "jpg" | "jpeg" => ImageFormat::Jpeg,
     _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
   };
+  
+  let mut animated_frame: Option<(u32, u32)> = target_frame
+    .split_once("-")
+    .and_then(
+      |r| r.0.parse().ok().zip(r.1.parse().ok())
+    );
+
+  let mut frame = target_frame.parse().ok();
 
   if animated_frame.is_some() && target_format != ImageFormat::Gif {
     return (
@@ -60,56 +82,62 @@ pub(crate) async fn handler(
     ).into_response();
   }
 
-  let env_config = match ENV_CONFIG.get() {
-    Some(env) => env,
-    None => return (
-      StatusCode::INTERNAL_SERVER_ERROR,
-      "Failed to parse target file."
-    ).into_response()
-  };
+  if season.is_empty() {
+    let offset = match episode.as_str() {
+      "1" => Some(EPISODE_SPLIT_FRAME[0]),
+      "2" => Some(EPISODE_SPLIT_FRAME[1]),
+      "3" => Some(EPISODE_SPLIT_FRAME[2]),
+      _ => None
+    };
 
-  let season_name = match season.as_str() {
-    "1" | "mygo" => "",
-    "2" | "ave" | "ave-mujica" => "ave-",
-    _ => ""
-  };
-
-  if let Some(animated_frame) = animated_frame {
+    if let Some(offset) = offset {
+      match (frame, animated_frame) {
+        (Some(f), None) => {
+          frame = Some(f + offset)
+        },
+        (None, Some(a_f)) => {
+          animated_frame = Some((a_f.0 + offset, a_f.1 + offset))
+        },
+        _ => return (
+          StatusCode::BAD_REQUEST,
+          "Failed to request file with target frame."
+        ).into_response()
+      }
+      episode = String::from("1-3");
+    }
+  }
+  
+  match (frame, animated_frame) {
+    (Some(frame), None) => return handle_static_image(
+      env_config,
+      season,
+      &episode,
+      frame,
+      target_format
+    ).await,
+    (None, Some(animated_frame)) => 
     return handle_animated_image(
       env_config,
-      &season_name,
+      season,
       &episode,
       animated_frame,
       scheduler
-    ).await;
-  } else {
-    return handle_static_image(
-      env_config,
-      &season_name,
-      &episode,
-      target_frame,
-      target_format
-    ).await;
+    ).await,
+    _ => return (
+      StatusCode::BAD_REQUEST,
+      "Failed to request file with target frame."
+    ).into_response()
   }
 }
 
 async fn handle_animated_image(
   env_config: &EnvConfig,
-  season_name: &str,
+  season: &str,
   episode: &str,
-  animated_frame: (&str, &str),
+  animated_frame: (u32, u32),
   scheduler: Arc<Scheduler>
 ) -> Response<Body> {
-  let u32_frame: Option<(u32, u32)> = animated_frame.0.parse().ok()
-    .zip(animated_frame.1.parse().ok());
-
-  let (start_frame, end_frame) = match u32_frame {
-    Some(r) => r,
-    None => return (
-      StatusCode::BAD_REQUEST,
-      "Failed to convert frame range to u32."
-    ).into_response(),
-  };
+  let (start_frame, end_frame) = animated_frame;
 
   if start_frame >= end_frame || start_frame <= 0 {
     return (
@@ -133,7 +161,7 @@ async fn handle_animated_image(
     env_config,
     start_frame,
     frames,
-    &season_name,
+    season,
     &episode,
     scheduler
   ).await
@@ -141,17 +169,17 @@ async fn handle_animated_image(
 
 async fn handle_static_image(
   env_config: &EnvConfig,
-  season_name: &str,
+  season: &str,
   episode: &str,
-  target_frame: &str,
-  target_format: ImageFormat
+  frame: u32,
+  format: ImageFormat
 ) -> Response<Body> {
   let source_file_path = format!(
     "{}/{}{}_{}.webp",
     env_config.image_source_path,
-    season_name,
+    season,
     episode,
-    target_frame
+    frame
   );
 
   if let Ok(exists) = fs::try_exists(&source_file_path).await {
@@ -176,5 +204,5 @@ async fn handle_static_image(
     ).into_response(),
   };
 
-  convert_static_image(reader, target_format).await
+  convert_static_image(reader, format).await
 }

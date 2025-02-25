@@ -58,7 +58,7 @@ pub(crate) async fn handler(
     Some(env) => env,
     None => return (
       StatusCode::INTERNAL_SERVER_ERROR,
-      "Failed to read server env."
+      "Failed to load server env."
     ).into_response(),
   };
 

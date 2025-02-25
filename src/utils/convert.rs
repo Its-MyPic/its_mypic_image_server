@@ -23,9 +23,9 @@ static SOURCE_FORMAT: ImageFormat = ImageFormat::WebP;
 
 pub(crate) async fn convert_static_image(
   reader: Cursor<Vec<u8>>,
-  target_format: ImageFormat
+  format: ImageFormat
 ) -> Response<Body> {
-  if target_format == SOURCE_FORMAT {
+  if format == SOURCE_FORMAT {
     return (
       StatusCode::OK,
       Body::from_stream(
@@ -46,7 +46,7 @@ pub(crate) async fn convert_static_image(
     ).into_response(),
   };
 
-  match decoded_img.write_to(&mut buf, target_format) {
+  match decoded_img.write_to(&mut buf, format) {
     Ok(_) => {
       buf.set_position(0);
 
@@ -70,14 +70,14 @@ pub(crate) async fn convert_animated_image(
   env_config: &EnvConfig,
   start_frame: u32,
   frames: u32,
-  season_name: &str,
+  season: &str,
   episode: &str,
   scheduler: Arc<Scheduler>
 ) -> Response<Body> {
   let start_fram_file_path = format!(
     "{}/{}{}_{}.webp",
     env_config.image_source_path,
-    season_name,
+    season,
     episode,
     start_frame
   );
@@ -85,7 +85,7 @@ pub(crate) async fn convert_animated_image(
   let end_fram_file_path = format!(
     "{}/{}{}_{}.webp",
     env_config.image_source_path,
-    season_name,
+    season,
     episode,
     start_frame + frames
   );
@@ -116,7 +116,7 @@ pub(crate) async fn convert_animated_image(
   let file_pattern = format!(
     "{}/{}{}_%d.webp",
     env_config.image_source_path,
-    season_name,
+    season,
     episode
   );
 
