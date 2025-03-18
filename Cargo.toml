@@ -16,7 +16,7 @@ image = { version = "0.25.5" }
 dotenvy = { version = "0.15.7" }
 chrono = { version = "0.4.39" }
 parking_lot = { version = "0.12.3" }
-priority-queue = { version = "2.1.2" }
+priority-queue = { version = "2.3.0" }
 crossbeam = "0.8.4"
 
 [profile.release]
