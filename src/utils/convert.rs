@@ -25,13 +25,21 @@ pub(crate) async fn convert_static_image(
   reader: Cursor<Vec<u8>>,
   format: ImageFormat
 ) -> Response<Body> {
+  let content_type = match format {
+      ImageFormat::Png => "image/png",
+      ImageFormat::Jpeg => "image/jpeg",
+      ImageFormat::WebP => "image/webp",
+      ImageFormat::Gif => "image/gif",
+      _ => "application/octet-stream"
+    };
+
   if format == SOURCE_FORMAT {
-    return (
-      StatusCode::OK,
-      Body::from_stream(
-        ReaderStream::new(reader)
-      )
-    ).into_response();
+    return Response::builder()
+      .status(StatusCode::OK)
+      .header("Content-Type", content_type)
+      .body(Body::from_stream(ReaderStream::new(reader)))
+      .unwrap()
+      .into_response();
   }
 
   let mut buf = Cursor::new(Vec::new());
@@ -50,12 +58,12 @@ pub(crate) async fn convert_static_image(
     Ok(_) => {
       buf.set_position(0);
 
-      return (
-        StatusCode::OK,
-        Body::from_stream(
-          ReaderStream::new(buf)
-        )
-      ).into_response();
+      return Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", content_type)
+        .body(Body::from_stream(ReaderStream::new(buf)))
+        .unwrap()
+        .into_response();
     },
     Err(_) => {
       return (
@@ -134,16 +142,12 @@ pub(crate) async fn convert_animated_image(
   scheduler.add_task(task.clone());
 
   if let Ok(data) = recv.recv() {
-    return (
-      StatusCode::OK,
-      Body::from_stream(
-        ReaderStream::new(
-          Cursor::new(
-            data
-          )
-        )
-      )
-    ).into_response();
+    return Response::builder()
+      .status(StatusCode::OK)
+      .header("Content-Type", "image/gif")
+      .body(Body::from_stream(ReaderStream::new(Cursor::new(data))))
+      .unwrap()
+      .into_response();
   } else {
     return (
       StatusCode::INTERNAL_SERVER_ERROR,
