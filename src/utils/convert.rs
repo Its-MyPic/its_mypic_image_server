@@ -80,19 +80,23 @@ pub(crate) async fn convert_animated_image(
   frames: u32,
   season: &str,
   episode: &str,
+  old: bool,
   scheduler: Arc<Scheduler>
 ) -> Response<Body> {
+
   let start_fram_file_path = format!(
-    "{}/{}{}_{}.webp",
+    "{}/{}/{}/{}/{}.webp",
     env_config.image_source_path,
+    if old { "1" } else { "2" },
     season,
     episode,
     start_frame
   );
 
   let end_fram_file_path = format!(
-    "{}/{}{}_{}.webp",
+    "{}/{}/{}/{}/{}.webp",
     env_config.image_source_path,
+    if old { "1" } else { "2" },
     season,
     episode,
     start_frame + frames

@@ -2,11 +2,12 @@ use std::{io::Cursor, sync::Arc};
 
 use axum::{
   body::Body,
-  extract::{Path, State},
+  extract::{Path, Query, State},
   http::{Response, StatusCode},
   response::IntoResponse
 };
 use image::ImageFormat;
+use serde::Deserialize;
 use tokio::fs;
 
 use crate::{
@@ -23,21 +24,23 @@ use crate::{
   Scheduler
 };
 
+#[derive(Deserialize)]
+pub struct Params {
+  pub old: Option<String>,
+}
 
-static EPISODE_SPLIT_FRAME: [u32; 3] = [0, 34288, 68334];
-
-
-pub(crate) async fn handler(
-  Path((season, episode, target)): Path<(u8, String, String)>,
+pub async fn handler(
+  Path((season, episode, target)): Path<(String, String, String)>,
+  Query(params): Query<Params>,
   State(scheduler): State<Arc<Scheduler>>,
 ) -> impl IntoResponse {
-  let season = match season {
-    1 => "",
-    2 => "ave-",
-    _ => ""
-  };
+  let old = params.old.is_some();
+  if old {
+    println!("old param: true");
+  }
 
-  let mut episode = episode.to_lowercase();
+
+  let episode = episode.to_lowercase();
   let target = target.to_lowercase();
 
   let env_config = match ENV_CONFIG.get() {
@@ -67,13 +70,13 @@ pub(crate) async fn handler(
     _ => return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
   };
   
-  let mut animated_frame: Option<(u32, u32)> = target_frame
+  let animated_frame: Option<(u32, u32)> = target_frame
     .split_once("-")
     .and_then(
       |r| r.0.parse().ok().zip(r.1.parse().ok())
     );
 
-  let mut frame = target_frame.parse().ok();
+  let frame = target_frame.parse().ok();
 
   if animated_frame.is_some() && target_format != ImageFormat::Gif {
     return (
@@ -82,45 +85,22 @@ pub(crate) async fn handler(
     ).into_response();
   }
 
-  if season.is_empty() {
-    let offset = match episode.as_str() {
-      "1" => Some(EPISODE_SPLIT_FRAME[0]),
-      "2" => Some(EPISODE_SPLIT_FRAME[1]),
-      "3" => Some(EPISODE_SPLIT_FRAME[2]),
-      _ => None
-    };
-
-    if let Some(offset) = offset {
-      match (frame, animated_frame) {
-        (Some(f), None) => {
-          frame = Some(f + offset)
-        },
-        (None, Some(a_f)) => {
-          animated_frame = Some((a_f.0 + offset, a_f.1 + offset))
-        },
-        _ => return (
-          StatusCode::BAD_REQUEST,
-          "Failed to request file with target frame."
-        ).into_response()
-      }
-      episode = String::from("1-3");
-    }
-  }
-  
   match (frame, animated_frame) {
     (Some(frame), None) => return handle_static_image(
       env_config,
-      season,
+      &season,
       &episode,
       frame,
-      target_format
+      target_format,
+      old
     ).await,
-    (None, Some(animated_frame)) => 
+    (None, Some(animated_frame)) =>
     return handle_animated_image(
       env_config,
-      season,
+      &season,
       &episode,
       animated_frame,
+      old,
       scheduler
     ).await,
     _ => return (
@@ -135,6 +115,7 @@ async fn handle_animated_image(
   season: &str,
   episode: &str,
   animated_frame: (u32, u32),
+  old: bool,
   scheduler: Arc<Scheduler>
 ) -> Response<Body> {
   let (start_frame, end_frame) = animated_frame;
@@ -164,6 +145,7 @@ async fn handle_animated_image(
     frames,
     season,
     &episode,
+    old,
     scheduler
   ).await
 }
@@ -173,11 +155,13 @@ async fn handle_static_image(
   season: &str,
   episode: &str,
   frame: u32,
-  format: ImageFormat
+  format: ImageFormat,
+  old: bool
 ) -> Response<Body> {
   let source_file_path = format!(
-    "{}/{}{}_{}.webp",
+    "{}/{}/{}/{}/{}.webp",
     env_config.image_source_path,
+    if old { "2" } else { "1" },
     season,
     episode,
     frame
