@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
 
-      - uses: whoan/docker-build-with-cache-action@v5
+      - uses: whoan/docker-build-with-cache-action@v8
         with:
           username: ${{ github.actor }}
           password: "${{ secrets.GITHUB_TOKEN }}"
