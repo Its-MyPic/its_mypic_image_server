@@ -25,3 +25,4 @@ jobs:
           password: "${{ secrets.GITHUB_TOKEN }}"
           registry: ${{ env.REGISTRY }}
           image_name: ${{ env.IMAGE_NAME }}
+          push_image_and_stages: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
