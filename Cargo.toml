@@ -7,7 +7,7 @@ edition = "2021"
 axum = { version = "0.8.4", features = ["http2"] }
 tokio = { version = "1.45.1", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["io"] }
-tower-http = { version = "0.6.4", features = ["trace", "cors"] }
+tower-http = { version = "0.6.5", features = ["trace", "cors"] }
 tracing = { version = "0.1.41"}
 tracing-subscriber = { version = "0.3.19" }
 anyhow = { version = "1.0.98" }
