@@ -11,7 +11,7 @@ tower-http = { version = "0.6.4", features = ["trace", "cors"] }
 tracing = { version = "0.1.41"}
 tracing-subscriber = { version = "0.3.19" }
 anyhow = { version = "1.0.99" }
-regex = { version = "1.11.1" }
+regex = { version = "1.11.2" }
 image = { version = "0.25.6" }
 dotenvy = { version = "0.15.7" }
 chrono = { version = "0.4.41" }
