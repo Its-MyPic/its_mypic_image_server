@@ -10,7 +10,7 @@ tokio-util = { version = "0.7.16", features = ["io"] }
 tower-http = { version = "0.6.4", features = ["trace", "cors"] }
 tracing = { version = "0.1.41"}
 tracing-subscriber = { version = "0.3.20" }
-anyhow = { version = "1.0.99" }
+anyhow = { version = "1.0.100" }
 regex = { version = "1.11.2" }
 image = { version = "0.25.6" }
 dotenvy = { version = "0.15.7" }
