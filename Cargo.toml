@@ -12,7 +12,7 @@ tracing = { version = "0.1.41"}
 tracing-subscriber = { version = "0.3.22" }
 anyhow = { version = "1.0.100" }
 regex = { version = "1.12.2" }
-image = { version = "0.25.6" }
+image = { version = "0.25.9" }
 dotenvy = { version = "0.15.7" }
 chrono = { version = "0.4.41" }
 parking_lot = { version = "0.12.5" }
