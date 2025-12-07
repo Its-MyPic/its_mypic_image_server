@@ -1,4 +1,4 @@
-FROM rust:1.84.1-slim-bullseye AS builder
+FROM rust:1.91-slim-bullseye AS builder
 
 # 安裝基本工具和更新證書
 RUN apt-get update && \
