@@ -15,7 +15,7 @@ regex = { version = "1.12.4" }
 image = { version = "0.25.10" }
 dotenvy = { version = "0.15.7" }
 chrono = { version = "0.4.45" }
-parking_lot = { version = "0.12.5" }
+parking_lot = { version = "0.13.0" }
 priority-queue = { version = "2.7.0" }
 crossbeam = "0.8.4"
 serde = { version = "1.0.228", features = ["derive"] }
